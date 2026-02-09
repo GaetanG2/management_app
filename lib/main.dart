@@ -11,6 +11,8 @@ import 'features/ventes/pages/history_page.dart';
 import 'features/ventes/pages/statistics_page.dart';
 import 'data/database/database_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/ventes/providers/vente_provider.dart';
+import 'features/articles/providers/article_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -285,64 +287,62 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 // Top-level HomeDashboard implementation
-class HomeDashboard extends StatelessWidget {
+class HomeDashboard extends ConsumerWidget {
   final String role;
   final void Function(String id) onSelect;
   const HomeDashboard({super.key, required this.role, required this.onSelect});
 
   @override
-  Widget build(BuildContext context) {
-    final roleLower = role.toLowerCase();
-    final allItems = [
-      {'id': 'articles', 'label': 'Articles', 'subtitle': 'Gérer produits', 'icon': Icons.inventory, 'roles': ['superadmin', 'admin']},
-      {'id': 'sales', 'label': 'Ventes', 'subtitle': 'Enregistrer une vente', 'icon': Icons.shopping_cart, 'roles': ['superadmin', 'admin', 'employee']},
-      {'id': 'history', 'label': 'Historique', 'subtitle': 'Voir ventes passées', 'icon': Icons.history, 'roles': ['superadmin', 'admin', 'employee']},
-      {'id': 'statistics', 'label': 'Statistiques', 'subtitle': 'Suivi simple', 'icon': Icons.bar_chart, 'roles': ['superadmin', 'admin']},
-      {'id': 'users', 'label': 'Utilisateurs', 'subtitle': 'Comptes & rôles', 'icon': Icons.people, 'roles': ['superadmin', 'admin']},
-      {'id': 'settings', 'label': 'Paramètres', 'subtitle': 'Backup & devise', 'icon': Icons.settings, 'roles': ['superadmin', 'admin']},
-    ];
-
-    final menuItems = allItems.where((it) => (it['roles'] as List).contains(roleLower)).toList();
-
+  Widget build(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(builder: (context, constraints) {
-      final width = constraints.maxWidth;
-      // final crossAxis = width < 600 ? 1 : width < 900 ? 2 : 3; // crossAxis was unused; layout will use Wrap with responsive sizing
+      final ventes = ref.watch(ventesListProvider);
+      final articles = ref.watch(articlesNotifierProvider);
+
+      // group ventes by sale_id (show most recent groups)
+      final Map<String, List> grouped = {};
+      for (final v in ventes) {
+        final key = (v.saleId ?? v.id);
+        grouped.putIfAbsent(key, () => []).add(v);
+      }
+      final recentKeys = grouped.keys.toList()
+        ..sort((a, b) => grouped[b]!.first.createdAt.compareTo(grouped[a]!.first.createdAt));
 
       return SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // header (simple color block + title) - removed image usage for clarity and MVP
+            // header (simple color block + title)
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.cardRadius),
-              child: SizedBox(
-                height: 160,
-                width: double.infinity,
-                child: Container(
-                  color: AppTheme.primaryContainer,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
-                          Text('Tableau de bord', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.black)),
-                          const SizedBox(height: 6),
-                          Text('Bienvenue — $role', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54)),
-                        ]),
-                      ),
-                      Row(children: [
-                        IconButton(onPressed: () {}, icon: const Icon(Icons.cloud_upload, color: Colors.black)),
-                        IconButton(onPressed: () {}, icon: const Icon(Icons.notifications, color: Colors.black)),
-                      ])
-                    ],
+              child: LayoutBuilder(builder: (hhCtx, hhConstraints) {
+                final headerHeight = hhConstraints.maxWidth < 700 ? 110.0 : 140.0;
+                return SizedBox(
+                  height: headerHeight,
+                  width: double.infinity,
+                  child: Container(
+                    color: AppTheme.primaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.store, color: AppTheme.primary)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Text('Tableau de bord', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.black)),
+                            const SizedBox(height: 6),
+                            Text('Bienvenue — $role', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54)),
+                          ]),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              }),
             ),
             const SizedBox(height: 14),
 
-            // shortcuts (quick actions) — large buttons similar to Figma
+            // shortcuts
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: [
@@ -357,37 +357,69 @@ class HomeDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // search
-            TextField(decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: 'Rechercher un article, vente...', border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
-            const SizedBox(height: 12),
-
             const SizedBox(height: 16),
-            // quick stats
-            Wrap(spacing: 12, runSpacing: 12, children: [
-              _StatCard(title: 'Chiffre du jour', value: '0'),
-              _StatCard(title: 'Articles en stock', value: '0'),
-              _StatCard(title: 'Bénéfice', value: '0'),
-            ]),
+            // Stats: row with 3 equal columns on wide screens, stacked on narrow
+            LayoutBuilder(builder: (sctx, sc) {
+              final wide = sc.maxWidth >= 100;
+              if (wide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _StatCard(title: 'Chiffre du jour', value: '0')),
+                    const SizedBox(width: 16),
+                    Expanded(child: _StatCard(title: 'Articles en stock', value: articles.length.toString())),
+                    const SizedBox(width: 16),
+                    Expanded(child: _StatCard(title: 'Bénéfice', value: '0')),
+                  ],
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Chiffre du jour', value: '0')),
+                  Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Articles en stock', value: articles.length.toString())),
+                  Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Bénéfice', value: '0')),
+                ],
+              );
+            }),
 
-            const SizedBox(height: 18),
-            // feature shortcuts grid built from menuItems (uses provided subtitles)
-            const SizedBox(height: 8),
-            Wrap(spacing: 12, runSpacing: 12, children: menuItems.map((it) {
-              final id = it['id'] as String;
-              return SizedBox(width: 280, child: _FeatureCard(label: it['label'] as String, subtitle: it['subtitle'] as String?, icon: it['icon'] as IconData, onTap: () => onSelect(id)));
-            }).toList()),
+            const SizedBox(height: 20),
 
-            // recent activity placeholder
+            // recent activity — show up to 5 latest sales groups
             Text('Dernières ventes', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [const Text('Aucune vente récente', style: TextStyle(color: Colors.grey))]))),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(children: [
+                  if (recentKeys.isEmpty) const Text('Aucune vente récente', style: TextStyle(color: Colors.grey))
+                  else
+                    Column(
+                      children: recentKeys.take(5).map((k) {
+                        final group = grouped[k]!;
+                        final first = group.first;
+                        final date = DateTime.fromMillisecondsSinceEpoch(first.createdAt).toLocal();
+                        final names = group.map((v) {
+                          final found = articles.where((a) => a.id == v.articleId);
+                          return found.isEmpty ? 'Unknown' : found.first.name;
+                        }).toList();
+                        final total = group.fold<double>(0, (s, e) => s + e.total);
+                        return ListTile(
+                          title: Text('${date.toString().split('.').first}'),
+                          subtitle: Text(names.join(', ')),
+                          trailing: Text(total.toStringAsFixed(2)),
+                        );
+                      }).toList(),
+                    )
+                ]),
+              ),
+            ),
           ]),
         ),
       );
     });
   }
 }
-
 
 // Small statistic card
 class _StatCard extends StatelessWidget {
@@ -397,19 +429,16 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 280,
-      child: Card(
-        elevation: 1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.cardRadius)),
-        child: Padding(
-          padding: const EdgeInsets.all(14.0),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(value, style: Theme.of(context).textTheme.titleLarge),
-          ]),
-        ),
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.cardRadius)),
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(value, style: Theme.of(context).textTheme.titleLarge),
+        ]),
       ),
     );
   }
@@ -418,10 +447,9 @@ class _StatCard extends StatelessWidget {
 // Small reusable feature card with hover effect
 class _FeatureCard extends StatefulWidget {
   final String label;
-  final String? subtitle;
   final IconData icon;
   final VoidCallback onTap;
-  const _FeatureCard({required this.label, this.subtitle, required this.icon, required this.onTap});
+  const _FeatureCard({required this.label, required this.icon, required this.onTap});
 
   @override
   State<_FeatureCard> createState() => _FeatureCardState();
@@ -429,6 +457,7 @@ class _FeatureCard extends StatefulWidget {
 
 class _FeatureCardState extends State<_FeatureCard> {
   double _elevation = 2;
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -446,11 +475,9 @@ class _FeatureCardState extends State<_FeatureCard> {
               const SizedBox(height: 12),
               Text(widget.label, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              if (widget.subtitle != null) Text(widget.subtitle!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700])),
             ]),
           ),
         ),
-      ),
-    );
-  }
+      ));
+    }
 }

@@ -33,59 +33,71 @@ class _ArticlesPageState extends ConsumerState<ArticlesPage> {
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx2, setState) {
-        return AlertDialog(
-          title: Text(article == null ? 'Nouvel article' : 'Modifier l\'article'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nom')),
-                TextField(controller: buyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Prix d\'achat')),
-                TextField(controller: sellCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Prix de vente')),
-                TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantité')),
-                TextField(controller: catCtrl, decoration: const InputDecoration(labelText: 'Catégorie')),
-                const SizedBox(height: 8),
-                if (pickedImage != null) Image.memory(pickedImage!, width: 120, height: 120, fit: BoxFit.cover),
-                TextButton.icon(
-                    onPressed: () async {
-                      final typeGroup = XTypeGroup(label: 'images', extensions: ['jpg', 'png', 'jpeg']);
-                      final files = await openFiles(acceptedTypeGroups: [typeGroup]);
-                      if (files.isNotEmpty) {
-                        final file = File(files.first.path);
-                        final bytes = await file.readAsBytes();
-                        setState(() => pickedImage = bytes);
-                      }
-                    },
-                    icon: const Icon(Icons.photo),
-                    label: const Text('Ajouter une image'))
-              ],
+        return LayoutBuilder(builder: (ctx3, constraints) {
+          // responsive width: full on narrow, limited on wide
+          final dialogWidth = constraints.maxWidth < 600 ? constraints.maxWidth * 0.95 : 600.0;
+          return AlertDialog(
+            title: Text(article == null ? 'Nouvel article' : 'Modifier l\'article'),
+            content: SingleChildScrollView(
+              child: SizedBox(
+                width: dialogWidth,
+                child: Column(
+                  children: [
+                    TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nom')),
+                    TextField(controller: buyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Prix d\'achat')),
+                    TextField(controller: sellCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Prix de vente')),
+                    TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantité')),
+                    TextField(controller: catCtrl, decoration: const InputDecoration(labelText: 'Catégorie')),
+                    const SizedBox(height: 8),
+                    if (pickedImage != null)
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 240, maxHeight: 240),
+                        child: Image.memory(pickedImage!, width: 120, height: 120, fit: BoxFit.cover),
+                      ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                        onPressed: () async {
+                          final typeGroup = XTypeGroup(label: 'images', extensions: ['jpg', 'png', 'jpeg']);
+                          final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+                          if (files.isNotEmpty) {
+                            final file = File(files.first.path);
+                            final bytes = await file.readAsBytes();
+                            setState(() => pickedImage = bytes);
+                          }
+                        },
+                        icon: const Icon(Icons.photo),
+                        label: const Text('Ajouter une image'))
+                  ],
+                ),
+              ),
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Annuler')),
-            ElevatedButton(
-                onPressed: () async {
-                  final name = nameCtrl.text.trim();
-                  final buy = double.tryParse(buyCtrl.text.trim()) ?? 0;
-                  final sell = double.tryParse(sellCtrl.text.trim()) ?? 0;
-                  final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
-                  final cat = catCtrl.text.trim();
-                  if (name.isEmpty || cat.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nom et catégorie sont obligatoires')));
-                    return;
-                  }
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Annuler')),
+              ElevatedButton(
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    final buy = double.tryParse(buyCtrl.text.trim()) ?? 0;
+                    final sell = double.tryParse(sellCtrl.text.trim()) ?? 0;
+                    final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+                    final cat = catCtrl.text.trim();
+                    if (name.isEmpty || cat.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nom et catégorie sont obligatoires')));
+                      return;
+                    }
 
-                  if (article == null) {
-                    await ref.read(articlesNotifierProvider.notifier).addNew(name: name, buyPrice: buy, sellPrice: sell, quantity: qty, category: cat, image: pickedImage);
-                  } else {
-                    final updated = article.copyWith(name: name, buyPrice: buy, sellPrice: sell, quantity: qty, category: cat, image: pickedImage);
-                    await ref.read(articlesNotifierProvider.notifier).updateArticle(updated);
-                  }
+                    if (article == null) {
+                      await ref.read(articlesNotifierProvider.notifier).addNew(name: name, buyPrice: buy, sellPrice: sell, quantity: qty, category: cat, image: pickedImage);
+                    } else {
+                      final updated = article.copyWith(name: name, buyPrice: buy, sellPrice: sell, quantity: qty, category: cat, image: pickedImage);
+                      await ref.read(articlesNotifierProvider.notifier).updateArticle(updated);
+                    }
 
-                  if (context.mounted) Navigator.of(ctx).pop();
-                },
-                child: Text(article == null ? 'Ajouter' : 'Enregistrer'))
-          ],
-        );
+                    if (context.mounted) Navigator.of(ctx).pop();
+                  },
+                  child: Text(article == null ? 'Ajouter' : 'Enregistrer'))
+            ],
+          );
+        });
       }),
     );
   }
@@ -116,12 +128,6 @@ class _ArticlesPageState extends ConsumerState<ArticlesPage> {
     final filtered = _applyFilters(articles);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Articles'),
-        actions: [
-          TextButton.icon(onPressed: () => _showAddOrEditDialog(context, ref), icon: const Icon(Icons.add, color: Colors.black), label: const Text('Ajouter', style: TextStyle(color: Colors.black))),
-        ],
-      ),
       body: Padding(
         padding: EdgeInsets.all(AppTheme.defaultPadding),
         child: Column(
@@ -155,7 +161,7 @@ class _ArticlesPageState extends ConsumerState<ArticlesPage> {
                   onChanged: (v) => setState(() => _selectedCategory = v),
                   decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                 ),
-              ),
+              )
             ]),
             const SizedBox(height: 12),
 
@@ -190,6 +196,7 @@ class _ArticlesPageState extends ConsumerState<ArticlesPage> {
                   scrollDirection: Axis.horizontal,
                   child: Card(
                     child: DataTable(
+                      showCheckboxColumn: false,
                       sortColumnIndex: _sortColumnIndex,
                       sortAscending: _sortAscending,
                       columns: [
@@ -203,7 +210,11 @@ class _ArticlesPageState extends ConsumerState<ArticlesPage> {
                       rows: filtered
                           .map(
                             (a) => DataRow(cells: [
-                              DataCell(Text(a.name)),
+                              DataCell(Row(children: [
+                                CircleAvatar(backgroundImage: a.image == null ? null : MemoryImage(a.image!), child: a.image == null ? const Icon(Icons.inventory) : null),
+                                const SizedBox(width: 8),
+                                Text(a.name),
+                              ])),
                               DataCell(Text(a.buyPrice.toStringAsFixed(2))),
                               DataCell(Text(a.sellPrice.toStringAsFixed(2))),
                               DataCell(Text('${a.quantity}')),

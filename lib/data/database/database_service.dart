@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 class DatabaseService {
   final Database _db;
   final String path;
+  final StreamController<void> _salesStreamController = StreamController.broadcast();
 
   DatabaseService._(this._db, this.path);
 
@@ -102,15 +104,37 @@ class DatabaseService {
 
   String get dbFilePath => path;
 
-  Future<void> close() async => await _db.close();
+  Stream<void> get salesStream => _salesStreamController.stream;
+
+  Future<void> close() async {
+    await _salesStreamController.close();
+    await _db.close();
+  }
 
   // helper: insert a row into a table
-  Future<int> insert(String table, Map<String, Object?> values) => _db.insert(table, values);
+  Future<int> insert(String table, Map<String, Object?> values) async {
+    final result = await _db.insert(table, values);
+    if (table == 'ventes') {
+      _salesStreamController.add(null);
+    }
+    return result;
+  }
 
-  Future<int> update(String table, Map<String, Object?> values, String where, List<Object?> whereArgs) =>
-      _db.update(table, values, where: where, whereArgs: whereArgs);
+  Future<int> update(String table, Map<String, Object?> values, String where, List<Object?> whereArgs) async {
+    final result = await _db.update(table, values, where: where, whereArgs: whereArgs);
+    if (table == 'ventes') {
+      _salesStreamController.add(null);
+    }
+    return result;
+  }
 
-  Future<int> delete(String table, String where, List<Object?> whereArgs) => _db.delete(table, where: where, whereArgs: whereArgs);
+  Future<int> delete(String table, String where, List<Object?> whereArgs) async {
+    final result = await _db.delete(table, where: where, whereArgs: whereArgs);
+    if (table == 'ventes') {
+      _salesStreamController.add(null);
+    }
+    return result;
+  }
 
   Future<List<Map<String, Object?>>> query(String table, {String? where, List<Object?>? whereArgs, String? orderBy, int? limit, int? offset}) =>
       _db.query(table, where: where, whereArgs: whereArgs, orderBy: orderBy, limit: limit, offset: offset);

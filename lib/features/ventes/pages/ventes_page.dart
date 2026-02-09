@@ -171,7 +171,7 @@ class _VentesPageState extends ConsumerState<VentesPage> {
                                   width: 56,
                                   height: 56,
                                   decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(6)),
-                                  child: const Icon(Icons.inventory_2, color: Colors.grey),
+                                  child: art.image == null ? const Icon(Icons.inventory_2, color: Colors.grey) : ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.memory(art.image!, fit: BoxFit.cover)),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
