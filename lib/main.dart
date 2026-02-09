@@ -213,36 +213,73 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   itemCount: menuItems.length,
-                  separatorBuilder: (_, __) => const Divider(),
                   itemBuilder: (ctx, i) {
                     final it = menuItems[i];
                     final id = it['id'] as String;
-                    return ListTile(
-                      leading: Icon(it['icon'] as IconData, color: _selected == id ? AppTheme.primary : null),
-                      title: Text(it['label'] as String),
-                      selected: _selected == id,
-                      onTap: () {
-                        setState(() => _selected = id);
-                        if (narrow) Navigator.of(context).pop();
-                      },
+                    final selected = _selected == id;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6.0),
+                      child: Material(
+                        color: selected ? AppTheme.primary.withOpacity(0.04) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () {
+                            setState(() => _selected = id);
+                            if (narrow) Navigator.of(context).pop();
+                          },
+                          child: Row(
+                            children: [
+                              // accent bar
+                              Container(
+                                width: 4,
+                                height: 48,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(color: selected ? AppTheme.primary : Colors.transparent, borderRadius: BorderRadius.circular(2)),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                  child: Row(children: [
+                                    Icon(it['icon'] as IconData, color: selected ? AppTheme.primary : Colors.grey[700]),
+                                    const SizedBox(width: 12),
+                                    Text(it['label'] as String, style: TextStyle(fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
+                                  ]),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     );
                   },
                 ),
               ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Se déconnecter'),
-                onTap: () async {
-                  final notifier = ref.read(authProvider.notifier);
-                  final navigator = Navigator.of(context);
-                  await notifier.logout();
-                  if (!mounted) return;
-                  navigator.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginPage()), (r) => false);
-                },
+              const SizedBox(height: 6),
+              Divider(),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () async {
+                      final notifier = ref.read(authProvider.notifier);
+                      final navigator = Navigator.of(context);
+                      await notifier.logout();
+                      if (!mounted) return;
+                      navigator.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginPage()), (r) => false);
+                    },
+                    child: ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.redAccent),
+                      title: const Text('Se déconnecter'),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
             ],
