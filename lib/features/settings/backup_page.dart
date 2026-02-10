@@ -98,7 +98,7 @@ class _BackupPageState extends ConsumerState<BackupPage> {
             const Text('Remarques:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             const Text('• Utilisez cette interface pour copier manuellement la base entre appareils.'),
-            const Text('• Pour la sauvegarde sur Google Drive (futur), nous ajouterons OAuth et upload automatique.'),
+            //const Text('• Pour la sauvegarde sur Google Drive (futur), nous ajouterons OAuth et upload automatique.'),
           ],
         ),
       ),

@@ -223,7 +223,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6.0),
                       child: Material(
-                        color: selected ? AppTheme.primary.withOpacity(0.04) : Colors.transparent,
+                        color: selected ? AppTheme.primary.withAlpha(10) : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(8),
@@ -397,124 +397,134 @@ class HomeDashboard extends ConsumerWidget {
             const SizedBox(height: 16),
             // Stats: row with 3 equal columns on wide screens, stacked on narrow
             LayoutBuilder(builder: (sctx, sc) {
-              final wide = sc.maxWidth >= 100;
-              if (wide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _StatCard(title: 'Chiffre du jour', value: '0')),
-                    const SizedBox(width: 16),
-                    Expanded(child: _StatCard(title: 'Articles en stock', value: articles.length.toString())),
-                    const SizedBox(width: 16),
-                    Expanded(child: _StatCard(title: 'Bénéfice', value: '0')),
-                  ],
-                );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Chiffre du jour', value: '0')),
-                  Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Articles en stock', value: articles.length.toString())),
-                  Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Bénéfice', value: '0')),
-                ],
-              );
-            }),
+              // use a realistic desktop breakpoint
+              final wide = sc.maxWidth >= 700;
+               if (wide) {
+                 return Row(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Expanded(child: _StatCard(title: 'Chiffre du jour', value: '0')),
+                     const SizedBox(width: 16),
+                     Expanded(child: _StatCard(title: 'Articles en stock', value: articles.length.toString())),
+                     const SizedBox(width: 16),
+                     Expanded(child: _StatCard(title: 'Bénéfice', value: '0')),
+                   ],
+                 );
+               }
+               return Column(
+                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                 children: [
+                   Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Chiffre du jour', value: '0')),
+                   Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Articles en stock', value: articles.length.toString())),
+                   Padding(padding: const EdgeInsets.only(bottom: 16.0), child: _StatCard(title: 'Bénéfice', value: '0')),
+                 ],
+               );
+             }),
 
-            const SizedBox(height: 20),
+             const SizedBox(height: 20),
 
-            // recent activity — show up to 5 latest sales groups
-            Text('Dernières ventes', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(children: [
-                  if (recentKeys.isEmpty) const Text('Aucune vente récente', style: TextStyle(color: Colors.grey))
-                  else
-                    Column(
-                      children: recentKeys.take(5).map((k) {
-                        final group = grouped[k]!;
-                        final first = group.first;
-                        final date = DateTime.fromMillisecondsSinceEpoch(first.createdAt).toLocal();
-                        final names = group.map((v) {
-                          final found = articles.where((a) => a.id == v.articleId);
-                          return found.isEmpty ? 'Unknown' : found.first.name;
-                        }).toList();
-                        final total = group.fold<double>(0, (s, e) => s + e.total);
-                        return ListTile(
-                          title: Text('${date.toString().split('.').first}'),
-                          subtitle: Text(names.join(', ')),
-                          trailing: Text(total.toStringAsFixed(2)),
-                        );
-                      }).toList(),
-                    )
-                ]),
-              ),
-            ),
-          ]),
-        ),
-      );
-    });
-  }
+             // recent activity — show up to 5 latest sales groups
+             Text('Dernières ventes', style: Theme.of(context).textTheme.titleMedium),
+             const SizedBox(height: 8),
+             Card(
+               child: Padding(
+                 padding: const EdgeInsets.all(12),
+                 child: Column(children: [
+                   if (recentKeys.isEmpty) const Text('Aucune vente récente', style: TextStyle(color: Colors.grey))
+                   else
+                     Column(
+                       children: recentKeys.take(5).map((k) {
+                         final group = grouped[k]!;
+                         final first = group.first;
+                         final date = DateTime.fromMillisecondsSinceEpoch(first.createdAt).toLocal();
+                         final names = group.map((v) {
+                           final found = articles.where((a) => a.id == v.articleId);
+                           return found.isEmpty ? 'Unknown' : found.first.name;
+                         }).toList();
+                         final total = group.fold<double>(0, (s, e) => s + e.total);
+                         return ListTile(
+                           title: Text('${date.toString().split('.').first}'),
+                           subtitle: Text(names.join(', ')),
+                           trailing: Text(total.toStringAsFixed(2)),
+                         );
+                       }).toList(),
+                     )
+                 ]),
+               ),
+             ),
+           ]),
+         ),
+       );
+     });
+   }
 }
 
-// Small statistic card
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  const _StatCard({required this.title, required this.value});
+ // Small statistic card
+ class _StatCard extends StatelessWidget {
+   final String title;
+   final String value;
+   const _StatCard({required this.title, required this.value});
 
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.cardRadius)),
-      child: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+   @override
+   Widget build(BuildContext context) {
+     return Card(
+       elevation: 1,
+       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.cardRadius)),
+       child: Padding(
+         padding: const EdgeInsets.all(14.0),
+         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(value, style: Theme.of(context).textTheme.titleLarge),
-        ]),
-      ),
-    );
-  }
-}
+          // ensure value fits and scales nicely on different widths
+          FittedBox(alignment: Alignment.centerLeft, fit: BoxFit.scaleDown, child: Text(value, style: Theme.of(context).textTheme.titleLarge)),
+         ]),
+       ),
+     );
+   }
+ }
 
-// Small reusable feature card with hover effect
-class _FeatureCard extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  const _FeatureCard({required this.label, required this.icon, required this.onTap});
+ // Small reusable feature card with hover effect
+ class _FeatureCard extends StatefulWidget {
+   final String label;
+   final IconData icon;
+   final VoidCallback onTap;
+   const _FeatureCard({required this.label, required this.icon, required this.onTap});
 
-  @override
-  State<_FeatureCard> createState() => _FeatureCardState();
-}
+   @override
+   State<_FeatureCard> createState() => _FeatureCardState();
+ }
 
-class _FeatureCardState extends State<_FeatureCard> {
-  double _elevation = 2;
+ class _FeatureCardState extends State<_FeatureCard> {
+   double _elevation = 2;
 
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _elevation = 6),
-      onExit: (_) => setState(() => _elevation = 2),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Card(
-          elevation: _elevation,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.cardRadius)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              CircleAvatar(radius: 28, backgroundColor: AppTheme.primary.withAlpha(40), child: Icon(widget.icon, size: 28, color: AppTheme.primary)),
-              const SizedBox(height: 12),
-              Text(widget.label, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-            ]),
-          ),
-        ),
-      ));
-    }
-}
+   @override
+   Widget build(BuildContext context) {
+     return MouseRegion(
+       onEnter: (_) => setState(() => _elevation = 6),
+       onExit: (_) => setState(() => _elevation = 2),
+       child: GestureDetector(
+         onTap: widget.onTap,
+         child: Card(
+           elevation: _elevation,
+           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.cardRadius)),
+           child: Padding(
+             padding: const EdgeInsets.all(16.0),
+             child: Column(
+               mainAxisAlignment: MainAxisAlignment.center,
+               children: [
+                 CircleAvatar(
+                   radius: 28,
+                   backgroundColor: AppTheme.primary.withAlpha(40),
+                   child: Icon(widget.icon, size: 28, color: AppTheme.primary),
+                 ),
+                 const SizedBox(height: 12),
+                 Text(widget.label, style: Theme.of(context).textTheme.titleMedium),
+                 const SizedBox(height: 8),
+               ],
+             ),
+           ),
+         ),
+       ),
+     );
+   }
+ }

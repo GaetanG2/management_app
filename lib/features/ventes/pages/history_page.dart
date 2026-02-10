@@ -21,8 +21,31 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
     final end = now;
-    final r = await showDateRangePicker(context: context, firstDate: DateTime(2000), lastDate: DateTime(2100), initialDateRange: _range ?? DateTimeRange(start: start, end: end));
-    if (r != null) setState(() => _range = r);
+    // Constrain the picker size on large screens so it doesn't fill the whole UI
+    final r = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      initialDateRange: _range ?? DateTimeRange(start: start, end: end),
+      builder: (context, child) {
+        // on small screens child will size itself; on large screens we center and limit width/height
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700, maxHeight: 700),
+            child: Material(
+              elevation: 8,
+              color: Theme.of(context).dialogTheme.backgroundColor ?? Theme.of(context).colorScheme.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+    if (r != null) {
+      if (!mounted) return;
+      setState(() => _range = r);
+    }
   }
 
   @override

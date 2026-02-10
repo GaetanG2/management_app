@@ -20,7 +20,7 @@ class DatabaseService {
     // ensure directory exists
     await Directory(dir.path).create(recursive: true);
 
-    final db = await openDatabase(dbPath, version: 3, onCreate: (db, version) async {
+    final db = await openDatabase(dbPath, version: 4, onCreate: (db, version) async {
       // users table: store pin_hash unique
       await db.execute('''
         CREATE TABLE users (
@@ -42,6 +42,15 @@ class DatabaseService {
           quantity INTEGER,
           category TEXT NOT NULL,
           image BLOB
+        )
+      ''');
+
+      // categories table
+      await db.execute('''
+        CREATE TABLE categories (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE,
+          created_at INTEGER
         )
       ''');
 
@@ -93,6 +102,25 @@ class DatabaseService {
           await db.execute('ALTER TABLE articles_new RENAME TO articles');
         } catch (_) {
           // ignore migration errors, preserve old table
+        }
+      }
+      if (oldVersion < 4) {
+        // create categories table if missing
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS categories (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL UNIQUE,
+              created_at INTEGER
+            )
+          ''');
+        } catch (_) {}
+
+        // add a nullable categoryId to articles for future normalized relation (safe)
+        try {
+          await db.execute('ALTER TABLE articles ADD COLUMN categoryId TEXT');
+        } catch (_) {
+          // ignore if column exists
         }
       }
     });
